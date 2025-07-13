@@ -75,15 +75,14 @@
     }
     #modal-img { max-width:160px; margin-bottom:15px; }
     #modal-title { font-size:16px; font-weight:600; margin-bottom:4px; color:#001f3f; }
-    #modal-wholesale {
-      font-size: 1.09em;
-      color: #18713b;
-      font-weight: 600;
-      background: #eefbf3;
-      padding: 7px 14px;
+    #modal-price {
+      font-size: 1.11em; 
+      color: #154975; 
+      font-weight: 700; 
+      margin: 7px 0 0 0;
+      background: #f0f7fa;
       border-radius: 7px;
-      margin-bottom: 7px;
-      display: inline-block;
+      padding: 5px 0 4px 0;
     }
     #modal-close { position:absolute;top:8px;right:16px;cursor:pointer;font-size:32px;line-height:1;color:#224;}
     @keyframes popin { from { transform: scale(0.93); opacity:0; } to { transform: scale(1); opacity:1; } }
@@ -114,5 +113,126 @@
       <span id="modal-close">&times;</span>
       <img id="modal-img" src="" alt="">
       <div id="modal-title"></div>
-      <div id="modal-wholesale" style="display:none;"></div>
+      <div id="modal-price"></div>
     </div>
+  </div>
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyE5WZG0nUnrDLL0HfROliIdvWVRynC3nt-bWt6eTlvZP-InbhxsxBCtZWyM9BsM7Gz-Q/exec';
+    let expandedBreweries = {};
+    let allProducts = [];
+    let filteredProducts = [];
+
+    function groupByBrewery(products) {
+      const groups = {};
+      products.forEach(p => {
+        let brewery = (p['Product Title']||'').split('(')[0].trim();
+        if (!groups[brewery]) groups[brewery] = [];
+        groups[brewery].push(p);
+      });
+      return groups;
+    }
+
+    function showModal(product) {
+      document.getElementById('modal-img').src = product['Image URL'] || '';
+      document.getElementById('modal-img').alt = product['Product Title'];
+      document.getElementById('modal-title').textContent = product['Product Title'];
+      // Show wholesale price if available
+      const price = product['Wholesale Price'];
+      document.getElementById('modal-price').textContent = 
+        price && price !== 'N/A' && price !== '' && price !== undefined
+        ? `Wholesale: $${Number(price).toFixed(2)}`
+        : 'Wholesale: N/A';
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function hideModal() { document.getElementById('modal').style.display = 'none'; }
+    document.getElementById('modal-close').onclick = hideModal;
+    document.getElementById('modal').onclick = function(e) {
+      if (e.target === document.getElementById('modal')) hideModal();
+    };
+
+    function renderBreweryList(products) {
+      const container = document.getElementById('brewery-list');
+      container.innerHTML = '';
+      const groups = groupByBrewery(products);
+      Object.keys(groups).sort().forEach(brewery => {
+        const isOpen = expandedBreweries[brewery];
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'brewery-group';
+        // Header
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'brewery-header' + (isOpen ? ' open' : '');
+        header.onclick = () => {
+          expandedBreweries[brewery] = !expandedBreweries[brewery];
+          renderBreweryList(filteredProducts);
+        };
+        const chevron = document.createElement('span');
+        chevron.className = 'chevron';
+        chevron.innerHTML = '▶';
+        header.appendChild(chevron);
+        const title = document.createElement('span');
+        title.className = 'brewery-title';
+        title.textContent = brewery;
+        header.appendChild(title);
+        groupDiv.appendChild(header);
+        // Body (list of products)
+        if (isOpen) {
+          const body = document.createElement('div');
+          body.className = 'brewery-body';
+          groups[brewery].forEach(prod => {
+            const row = document.createElement('div');
+            row.className = 'prod-row';
+            // Product name, clickable for image modal
+            const name = document.createElement('span');
+            name.className = 'prod-name';
+            name.textContent = prod['Product Title'];
+            name.onclick = () => showModal(prod);
+            // Inventory qty
+            const qty = document.createElement('span');
+            qty.className = 'prod-qty' + ((parseInt(prod['Quantity']) === 0) ? ' zero' : '');
+            qty.textContent = prod['Quantity'] || 0;
+            row.appendChild(name);
+            row.appendChild(qty);
+            body.appendChild(row);
+          });
+          groupDiv.appendChild(body);
+        }
+        container.appendChild(groupDiv);
+      });
+    }
+
+    async function fetchInventory() {
+      document.getElementById('loading').style.display = 'block';
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+        return data;
+      } catch {
+        document.getElementById('loading').innerHTML = '<span>Unable to load inventory. Try again later.</span>';
+        return [];
+      }
+    }
+
+    // Filter/search logic
+    document.getElementById('searchbar').addEventListener('input', function() {
+      const term = this.value.trim().toLowerCase();
+      if (!term) {
+        filteredProducts = allProducts.slice();
+      } else {
+        filteredProducts = allProducts.filter(p => {
+          return (p['Product Title']||'').toLowerCase().includes(term) ||
+                 ((p['Product Title']||'').split('(')[0].trim().toLowerCase()).includes(term);
+        });
+      }
+      renderBreweryList(filteredProducts);
+    });
+
+    fetchInventory().then(products => {
+      allProducts = products;
+      filteredProducts = products.slice();
+      renderBreweryList(products);
+    });
+  </script>
+</body>
+</html>
