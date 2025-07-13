@@ -75,7 +75,7 @@
     }
     #modal-img { max-width:160px; margin-bottom:15px; }
     #modal-title { font-size:16px; font-weight:600; margin-bottom:4px; color:#001f3f; }
-    #modal-price {
+    #modal-price, #modal-pack {
       font-size: 1.11em; 
       color: #154975; 
       font-weight: 700; 
@@ -83,6 +83,11 @@
       background: #f0f7fa;
       border-radius: 7px;
       padding: 5px 0 4px 0;
+    }
+    #modal-pack {
+      color: #03692c;
+      margin-top: 5px;
+      background: #e8faed;
     }
     #modal-close { position:absolute;top:8px;right:16px;cursor:pointer;font-size:32px;line-height:1;color:#224;}
     @keyframes popin { from { transform: scale(0.93); opacity:0; } to { transform: scale(1); opacity:1; } }
@@ -114,6 +119,7 @@
       <img id="modal-img" src="" alt="">
       <div id="modal-title"></div>
       <div id="modal-price"></div>
+      <div id="modal-pack"></div>
     </div>
   </div>
   <script>
@@ -142,6 +148,12 @@
         price && price !== 'N/A' && price !== '' && price !== undefined
         ? `Wholesale: $${Number(price).toFixed(2)}`
         : 'Wholesale: N/A';
+      // Show 24-pack price if available
+      const pack = product['24-Pack Price'];
+      document.getElementById('modal-pack').textContent = 
+        pack && pack !== 'N/A' && pack !== '' && pack !== undefined
+        ? `24-Pack: $${Number(pack).toFixed(2)}`
+        : '24-Pack: N/A';
       document.getElementById('modal').style.display = 'flex';
     }
     function hideModal() { document.getElementById('modal').style.display = 'none'; }
